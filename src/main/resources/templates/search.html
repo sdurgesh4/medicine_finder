@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Medicine Finder</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+            rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .medicine-card {
+            transition: transform 0.2s ease;
+        }
+        .medicine-card:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container mt-4">
+
+    <h2 class="text-center mb-4">💊 Medicine Finder</h2>
+
+    <!-- 🔍 Search Bar -->
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2">
+            <input type="text"
+                   id="searchInput"
+                   class="form-control form-control-lg"
+                   placeholder="Type medicine name (e.g. Augmentin, Paracetamol)">
+        </div>
+    </div>
+
+    <!-- 📦 Search Results -->
+    <div class="row" id="results"></div>
+
+</div>
+
+<!-- ================== JAVASCRIPT ================== -->
+<script>
+    const searchInput = document.getElementById("searchInput");
+    const resultsDiv = document.getElementById("results");
+    let debounceTimer;
+
+    searchInput.addEventListener("input", function () {
+        const query = this.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            resultsDiv.innerHTML = "";
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/medicines/search?q=${encodeURIComponent(query)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("No results");
+                    }
+                    return response.json();
+                })
+                .then(data => renderResults(data))
+                .catch(() => resultsDiv.innerHTML = "");
+        }, 300);
+    });
+
+    function renderResults(medicines) {
+        resultsDiv.innerHTML = "";
+
+        medicines.forEach(med => {
+
+            const price = med.price ? `₹${med.price}` : "N/A";
+
+            const cardHtml = `
+                <div class="col-md-4 mb-3">
+                    <div class="card medicine-card h-100 shadow-sm">
+                        <div class="card-body">
+
+                            <h5 class="card-title">${med.name}</h5>
+
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                ${med.manufacturer}
+                            </h6>
+
+                            <!-- ✅ DETAILS SECTION -->
+                            <p class="card-text">
+                                <strong>Price:</strong> ${price}<br>
+                                <strong>Type:</strong> ${med.type}<br>
+                                <strong>Pack:</strong> ${med.packSize}
+                            </p>
+
+                            <p class="card-text">
+                                <strong>Ingredients:</strong>
+                                <ul>
+                                    ${med.ingredients.map(i => `<li>${i}</li>`).join("")}
+                                </ul>
+                            </p>
+
+                            <span class="badge ${med.discontinued ? 'bg-danger' : 'bg-success'}">
+                                ${med.discontinued ? 'Discontinued' : 'Available'}
+                            </span>
+
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultsDiv.insertAdjacentHTML("beforeend", cardHtml);
+        });
+    }
+</script>
+
+</body>
+</html>
